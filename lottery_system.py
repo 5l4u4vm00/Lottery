@@ -425,12 +425,12 @@ class LotterySystem:
     # ========== 關鍵字抽籤邏輯 ==========
 
     def draw_keywords(self, participant_count):
-        """執行關鍵字抽籤 - 每人抽取2個關鍵字
+        """執行關鍵字抽籤 - 每人抽取2個關鍵字（分兩輪進行）
 
         新規則:
         - 每位參與者從其他所有參與者的關鍵字中抽取
         - 不會抽到自己的關鍵字
-        - 每次抽籤中不會出現重複的關鍵字
+        - 兩輪抽籤中都不會出現重複的關鍵字（第一輪抽過的關鍵字，第二輪不會再出現）
 
         Args:
             participant_count: 參與人數
@@ -457,34 +457,57 @@ class LotterySystem:
         if len(all_keywords) < participant_count * 2:
             return False, {}, f"關鍵字總數不足（總數: {len(all_keywords)}, 需要: {participant_count * 2}）"
 
-        # 為每個參與者抽取2個不重複的關鍵字
+        # 初始化結果字典
         result_dict = {}
-        used_keywords_in_this_draw = []  # 本次抽籤中已使用的關鍵字
+        for participant in selected_participants:
+            result_dict[participant['email']] = {
+                'name': participant['name'],
+                'email': participant['email'],
+                'keywords': []
+            }
 
+        # 全域已使用關鍵字（兩輪共用，確保完全不重複）
+        used_keywords_global = []
+
+        # 第一輪抽籤 - 每人抽 1 個關鍵字
         for participant in selected_participants:
             # 建立當前參與者可用的關鍵字池:
             # 1. 排除自己的關鍵字
-            # 2. 排除本次抽籤中已使用的關鍵字
+            # 2. 排除全域已使用的關鍵字
             available_for_this_participant = []
             for p in self.participants:
                 if p['email'] != participant['email']:  # 不抽自己的關鍵字
                     for keyword in p['keywords']:
-                        if keyword not in used_keywords_in_this_draw:  # 避免重複
+                        if keyword not in used_keywords_global:  # 避免重複
                             available_for_this_participant.append(keyword)
 
-            if len(available_for_this_participant) < 2:
-                return False, {}, f"參與者 {participant['name']} 的可用關鍵字不足（可用: {len(available_for_this_participant)}, 需要: 2）"
+            if len(available_for_this_participant) < 1:
+                return False, {}, f"第一輪: 參與者 {participant['name']} 的可用關鍵字不足（可用: {len(available_for_this_participant)}, 需要: 1）"
 
-            # 為當前參與者抽取2個關鍵字
-            participant_keywords = random.sample(available_for_this_participant, 2)
-            result_dict[participant['email']] = {
-                'name': participant['name'],
-                'email': participant['email'],
-                'keywords': participant_keywords
-            }
+            # 為當前參與者抽取 1 個關鍵字
+            keyword = random.choice(available_for_this_participant)
+            result_dict[participant['email']]['keywords'].append(keyword)
+            used_keywords_global.append(keyword)
 
-            # 標記這些關鍵字為已使用
-            used_keywords_in_this_draw.extend(participant_keywords)
+        # 第二輪抽籤 - 每人再抽 1 個關鍵字
+        for participant in selected_participants:
+            # 建立當前參與者可用的關鍵字池:
+            # 1. 排除自己的關鍵字
+            # 2. 排除全域已使用的關鍵字（包含第一輪）
+            available_for_this_participant = []
+            for p in self.participants:
+                if p['email'] != participant['email']:  # 不抽自己的關鍵字
+                    for keyword in p['keywords']:
+                        if keyword not in used_keywords_global:  # 避免重複
+                            available_for_this_participant.append(keyword)
+
+            if len(available_for_this_participant) < 1:
+                return False, {}, f"第二輪: 參與者 {participant['name']} 的可用關鍵字不足（可用: {len(available_for_this_participant)}, 需要: 1）"
+
+            # 為當前參與者抽取 1 個關鍵字
+            keyword = random.choice(available_for_this_participant)
+            result_dict[participant['email']]['keywords'].append(keyword)
+            used_keywords_global.append(keyword)
 
         return True, result_dict, "抽籤成功"
 
