@@ -1,0 +1,6 @@
+# 标准库已包含所需模块，无需额外依赖
+# tkinter - GUI框架（Python自带）
+# json - 数据存储（Python自带）
+# smtplib - 邮件发送（Python自带）
+# datetime - 时间处理（Python自带）
+# random - 随机抽取（Python自带）
